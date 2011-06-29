@@ -22,28 +22,7 @@
         count: 0,
         payout: new Btc()
     };
-    var defaults = {
-        deepbit: {
-            token: ''
-        },
-        slush: {
-            token: ''
-        },
-        btcguild: {
-            token: ''
-        },
-        btcmine: {
-            token: ''
-        },
-        bitclockers: {
-            token: ''
-        },
-        polmine: {
-            token: ''
-        },   
-        simplecoin: {
-            token: ''
-        },   
+    var defaults = {        
         summary: true,
         badge: 'hashrate',
         convert: true
@@ -88,7 +67,7 @@
                 this.data[i] = new Btc(this.data[i]);              
             }, this);
            
-//            summary.count++;
+            //            summary.count++;
             calculateSummary();
         }
     }
@@ -212,7 +191,6 @@
             account_url: "my_account.php",
             token_url: "my_api.php",
             token_selector: ".middle b",
-            fields: ["payouts"],
             fieldsMap: {
                 confirmed_reward: "confirmed_rewards",
                 unconfirmed_reward: "unconfirmed_rewards",
@@ -370,6 +348,47 @@
                 this.data.unconfirmed_reward = 0;
                 this.data.estimated_reward = 0;
             }
+        },
+        minecoin: {
+            title: "mineco.in",
+            url: "https://mineco.in/",
+            api: "users/",
+            account_url: "workers",
+            token_url: "workers",
+            token_selector: "#content a:eq(1)",     
+            fieldsMap: {
+                estimated_reward: "estimated_reward_this_round"
+            },
+            preprocess: function(){
+                for(var field in this.fieldsMap){
+                    this.data.user[field] = this.data.user[this.fieldsMap[field]];
+                }
+            },            
+            token_getter: function(element){   
+                return element ? element.attr('href').slice(7, -5) : '';
+            },
+            process: function(){
+                var result = this.data.user;
+                result.hashrate = 0;
+                result.workers_alive = 0;
+                result.workers_all = 0;
+                for (var i in this.data.workers) {                    
+                    result.workers_all++;
+                    result.hashrate += this.data.workers[i].stats.hash_rate / 10000000;
+                    
+                    // 5 minutes delay     
+                    console.log(new Date().getTime(), new Date(this.data.workers[i].last_share_at).getTime());
+                    console.log((new Date().getTime()
+                        - new Date(this.data.workers[i].last_share_at).getTime())/1000);
+                    
+                    if(this.data.workers[i].last_share_at != 'never' &&
+                        (new Date().getTime()
+                        - new Date(this.data.workers[i].last_share_at).getTime())/1000 < 5 * 60){
+                        result.workers_alive++;
+                    }                   
+                }
+                this.data = result;                
+            }
         }
     }
     
@@ -395,6 +414,9 @@
         }    
         count = 0;
         for(var pool in pools){
+            defaults[pool] = {
+                token: ''
+            }
             if(options[pool] && options[pool].token){
                 count++;
             }
